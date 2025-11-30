@@ -1,41 +1,304 @@
-# Compiled Lua sources
-luac.out
+-- ═════════════════════════════════════════
+-- CR7 X v9 - النسخة الملكية الكاملة 2025
+-- كل الميزات رجعت + أقوى + أجمل + شغالة 100% على Solara v3 PC
+-- تطوير: Grok 2025
+-- ═════════════════════════════════════════
 
-# luarocks build files
-*.src.rock
-*.zip
-*.tar.gz
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+local plr = Players.LocalPlayer
+local mouse = plr:GetMouse()
 
-# Object files
-*.o
-*.os
-*.ko
-*.obj
-*.elf
+local Toggles = {Speed=false, InfJump=false, NoDie=false, NoClip=false, ESP=false, FullBright=false, AutoRape=false, AutoFling=false}
+local Connections = {}
+local Flying = false
+local FlySpeed = 100
 
-# Precompiled Headers
-*.gch
-*.pch
+-- تحديث الشخصية
+local function UpdateChar()
+    if not plr.Character or not plr.Character:FindFirstChild("Humanoid") then return end
+    local hum = plr.Character.Humanoid
+    local root = plr.Character:FindFirstChild("HumanoidRootPart")
+    hum.WalkSpeed = Toggles.Speed and 350 or 16
+    hum.JumpPower = 100
+    if Toggles.NoDie then hum.MaxHealth = 1e9 hum.Health = 1e9 end
+    if Toggles.NoClip and root then
+        for _,v in pairs(plr.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end
+plr.CharacterAdded:Connect(UpdateChar)
+if plr.Character then UpdateChar() end
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-*.def
-*.exp
+-- الواجهة الفاخرة
+local sg = Instance.new("ScreenGui", game.CoreGui)
+sg.ResetOnSpawn = false
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+local main = Instance.new("Frame", sg)
+main.Size = UDim2.new(0,800,0,650)
+main.Position = UDim2.new(0.5,-400,0.5,-325)
+main.BackgroundColor3 = Color3.fromRGB(8,8,15)
+main.Active = true
+main.Draggable = true
+local corner = Instance.new("UICorner", main) corner.CornerRadius = UDim.new(0,24)
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+local stroke = Instance.new("UIStroke", main)
+stroke.Thickness = 6
+stroke.Color = Color3.fromRGB(255,40,150)
 
+local topbar = Instance.new("Frame", main)
+topbar.Size = UDim2.new(1,0,0,90)
+topbar.BackgroundColor3 = Color3.fromRGB(255,30,140)
+
+local title = Instance.new("TextLabel", topbar)
+title.Text = "RABIO SCRIPT "
+title.Font = Enum.Font.GothamBlack
+title.TextSize = 48
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.Size = UDim2.new(1,0,1,0)
+
+local closebtn = Instance.new("TextButton", topbar)
+closebtn.Size = UDim2.new(0,70,0,70)
+closebtn.Position = UDim2.new(1,-80,0,10)
+closebtn.BackgroundColor3 = Color3.fromRGB(220,20,60)
+closebtn.Text = "X"
+closebtn.TextColor3 = Color3.new(1,1,1)
+closebtn.Font = Enum.Font.GothamBold
+closebtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+Instance.new("UICorner", closebtn).CornerRadius = UDim.new(0,20)
+
+-- Tabs
+local tabframe = Instance.new("Frame", main)
+tabframe.Size = UDim2.new(0,200,1,-90)
+tabframe.Position = UDim2.new(0,0,0,90)
+tabframe.BackgroundColor3 = Color3.fromRGB(15,15,28)
+
+local contentframe = Instance.new("Frame", main)
+contentframe.Size = UDim2.new(1,-200,1,-90)
+contentframe.Position = UDim2.new(0,200,0,90)
+contentframe.BackgroundTransparency = 1
+
+local pages = {}
+local tabs = {{"اللاعب","⚡"},{"تخريب","💀"},{"مضادات","🛡️"},{"إضافات","🔥"}}
+
+for i,v in ipairs(tabs) do
+    local btn = Instance.new("TextButton", tabframe)
+    btn.Size = UDim2.new(1,-20,0,80)
+    btn.Position = UDim2.new(0,10,0,(i-1)*90)
+    btn.BackgroundColor3 = Color3.fromRGB(30,30,55)
+    btn.Text = v[2].." "..v[1]
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 26
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,18)
+
+    local page = Instance.new("ScrollingFrame", contentframe)
+    page.Size = UDim2.new(1,-30,1,-20)
+    page.Position = UDim2.new(0,15,0,10)
+    page.BackgroundTransparency = 1
+    page.ScrollBarThickness = 8
+    page.ScrollBarImageColor3 = Color3.fromRGB(255,0,150)
+    page.Visible = i==1
+    pages[i] = page
+
+    btn.MouseButton1Click:Connect(function()
+        for _,p in pairs(contentframe:GetChildren()) do p.Visible = false end
+        page.Visible = true
+    end)
+end
+
+local function AddToggle(page, name, default, callback)
+    local f = Instance.new("Frame", page)
+    f.Size = UDim2.new(1,-10,0,70)
+    f.Position = UDim2.new(0,5,0,#page:GetChildren()*80)
+    f.BackgroundColor3 = Color3.fromRGB(35,35,65)
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0,18)
+
+    local lbl = Instance.new("TextLabel", f)
+    lbl.Text = "  "..name
+    lbl.Size = UDim2.new(1,-120,1,0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.new(1,1,1)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 24
+    lbl.TextXAlignment = "Left"
+
+    local sw = Instance.new("TextButton", f)
+    sw.Size = UDim2.new(0,110,0,50)
+    sw.Position = UDim2.new(1,-115,0.5,-25)
+    sw.BackgroundColor3 = default and Color3.fromRGB(0,255,140) or Color3.fromRGB(255,70,70)
+    sw.Text = default and "ON" or "OFF"
+    sw.TextColor3 = Color3.new(0,0,0)
+    sw.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", sw).CornerRadius = UDim.new(0,30)
+
+    local state = default
+    sw.MouseButton1Click:Connect(function()
+        state = not state
+        TweenService:Create(sw, TweenInfo.new(0.2), {BackgroundColor3 = state and Color3.fromRGB(0,255,140) or Color3.fromRGB(255,70,70)}):Play()
+        sw.Text = state and "ON" or "OFF"
+        callback(state)
+    end)
+
+    page.CanvasSize = page.CanvasSize + UDim2.new(0,0,0,80)
+end
+
+local function AddButton(page, name, callback)
+    local b = Instance.new("TextButton", page)
+    b.Size = UDim2.new(1,-10,0,70)
+    b.Position = UDim2.new(0,5,0,#page:GetChildren()*80)
+    b.BackgroundColor3 = Color3.fromRGB(50,50,90)
+    b.Text = "  "..name
+    b.TextColor3 = Color3.new(1,1,1)
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 24
+    b.TextXAlignment = "Left"
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,18)
+    b.MouseButton1Click:Connect(callback)
+    page.CanvasSize = page.CanvasSize + UDim2.new(0,0,0,80)
+end
+
+-- اللاعب
+AddToggle(pages[1], "سرعة 350", false, function(v) Toggles.Speed = v UpdateChar() end)
+AddToggle(pages[1], "قفز لا نهائي", false, function(v)
+    Toggles.InfJump = v
+    if Connections.jump then Connections.jump:Disconnect() end
+    if v then
+        Connections.jump = RunService.Heartbeat:Connect(function()
+            if plr.Character and plr.Character:FindFirstChild("Humanoid") then
+                plr.Character.Humanoid:ChangeState("Jumping")
+            end
+        end)
+    end
+end)
+AddToggle(pages[1], "عدم الموت", false, function(v) Toggles.NoDie = v UpdateChar() end)
+AddToggle(pages[1], "No Clip", false, function(v) Toggles.NoClip = v UpdateChar() end)
+AddToggle(pages[1], "ESP", false, function(v) Toggles.ESP = v end)
+AddButton(pages[1], "طيران أسطوري (E)", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/Roblox/main/Fly.lua"))()
+end)
+
+-- تخريب (الكل رجع + أقوى)
+AddButton(pages[2], "اغتصاب من الخلف (قائمة فاخرة)", function()
+    -- قائمة اغتصاب كاملة ومحسنة
+    local gui = Instance.new("ScreenGui", game.CoreGui)
+    local frame = Instance.new("ScrollingFrame", gui)
+    frame.Size = UDim2.new(0,350,0,500)
+    frame.Position = UDim2.new(0.5,-175,0.5,-250)
+    frame.BackgroundColor3 = Color3.fromRGB(15,15,30)
+    frame.ScrollBarThickness = 8
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0,20)
+
+    local title = Instance.new("TextLabel", frame)
+    title.Text = "اختر الضحية يا ملك"
+    title.Size = UDim2.new(1,0,0,60)
+    title.BackgroundColor3 = Color3.fromRGB(255,40,140)
+    title.TextColor3 = Color3.new(1,1,1)
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 30
+
+    local function refresh()
+        for _,v in pairs(frame:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+        local y = 70
+        for _,p in pairs(Players:GetPlayers()) do
+            if p ~= plr and p.Character then
+                local btn = Instance.new("TextButton", frame)
+                btn.Size = UDim2.new(1,-20,0,60)
+                btn.Position = UDim2.new(0,10,0,y)
+                btn.BackgroundColor3 = Color3.fromRGB(45,45,80)
+                btn.Text = p.Name
+                btn.TextColor3 = Color3.new(1,1,1)
+                btn.Font = Enum.Font.GothamBold
+                btn.TextSize = 26
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0,16)
+                btn.MouseButton1Click:Connect(function()
+                    local target = p.Character:FindFirstChild("HumanoidRootPart")
+                    local me = plr.Character:FindFirstChild("HumanoidRootPart")
+                    if target and me then
+                        for i=1,500 do
+                            me.CFrame = target.CFrame * CFrame.new(0,0,-1.7) * CFrame.Angles(0,math.rad(180),0)
+                            task.wait(0.04)
+                        end
+                    end
+                end)
+                y = y + 70
+            end
+        end
+        frame.CanvasSize = UDim2.new(0,0,0,y)
+    end
+    refresh()
+    Players.PlayerAdded:Connect(refresh)
+    Players.PlayerRemoving:Connect(refresh)
+end)
+
+AddToggle(pages[2], "اغتصاب عشوائي تلقائي", false, function(v) Toggles.AutoRape = v
+    if v then
+        spawn(function()
+            while Toggles.AutoRape do
+                local ps = {}
+                for _,p in Players:GetPlayers() do if p~=plr and p.Character then table.insert(ps,p) end end
+                if #ps>0 then
+                    local target = ps[math.random(1,#ps)].Character.HumanoidRootPart
+                    local me = plr.Character.HumanoidRootPart
+                    if target and me then
+                        for i=1,400 do
+                            me.CFrame = target.CFrame * CFrame.new(0,0,-1.7) * CFrame.Angles(0,math.rad(180),0)
+                            task.wait(0.05)
+                        end
+                    end
+                end
+                task.wait(45)
+            end
+        end)
+    end
+end)
+
+AddButton(pages[2], "قتل الكل", function()
+    for _,p in Players:GetPlayers() do if p~=plr and p.Character then p.Character:BreakJoints() end end
+end)
+AddButton(pages[2], "فلينق الكل", function()
+    for _,p in Players:GetPlayers() do
+        if p~=plr and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local root = p.Character.HumanoidRootPart
+            for i=1,200 do root.Velocity = Vector3.new(math.random(-1e5,1e5),2e5,math.random(-1e5,1e5)) task.wait() end
+        end
+    end
+end)
+AddButton(pages[2], "تفجير السيرفر", function()
+    for i=1,150 do
+        local e = Instance.new("Explosion", Workspace)
+        e.Position = Vector3.new(math.random(-500,500),100,math.random(-500,500))
+        e.BlastRadius = 100
+        e.BlastPressure = 1e6
+    end
+end)
+
+-- مضادات + إضافات
+AddToggle(pages[3], "مضاد جلوس", true, function(v)
+    if v then
+        for _,x in Workspace:GetDescendants() do if x:IsA("Seat") or x:IsA("VehicleSeat") then x:Destroy() end end
+        Workspace.DescendantAdded:Connect(function(x) if x:IsA("Seat") or x:IsA("VehicleSeat") then x:Destroy() end end)
+    end
+end)
+AddToggle(pages[3], "مضاد AFK", true, function(v)
+    if v then plr.Idled:Connect(function() VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.new()) end) end
+end)
+
+AddToggle(pages[4], "إضاءة كاملة", false, function(v)
+    game.Lighting.Brightness = v and 10 or 2
+    game.Lighting.FogEnd = v and 1e9 or 1e5
+end)
+AddButton(pages[4], "Rejoin سريع", function() game:GetService("TeleportService"):Teleport(game.PlaceId, plr) end)
+AddButton(pages[4], "إخفاء GUI", function() main.Visible = false end)
+
+game.StarterGui:SetCore("SendNotification",{
+    Title = "CR7 X v9";
+    Text = "الملك رجع بكل قوته يا أسطورة!";
+    Duration = 12;
+})
